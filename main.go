@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -35,6 +36,7 @@ func main() {
 
 	switch strings.ToLower(os.Args[1]) {
 	case "index":
+		idx.Init()
 		idx.Refresh()
 		err := idx.Save()
 		if err != nil {
@@ -51,19 +53,25 @@ func main() {
 }
 
 func printHelp() {
-	fmt.Println("Available commands: index, initial, good, bad, help")
+	fmt.Println("Available commands: index, good, bad, help")
+}
+
+// File is a file that has been indexed
+type File struct {
+	Status         string   `toml:"status"`
+	StatusOriginal string   `toml:"status-original,omitempty"`
+	BadCount       int      `toml:"bad-count,omitzero"`
+	Dependencies   []string `toml:"dependencies"`
+
+	fileName     string
+	currLocation string
 }
 
 // Index is the index of all files to bisect
 type Index struct {
-	TempDirectory string
+	TempDirectory string `toml:"temp-directory"`
 
-	Unknown []string
-	Ignored []string
-	Safe    []string
-	Unsafe  []string
-
-	DependencyDefinitions map[string][]string
+	Files map[string]File
 }
 
 // LoadIndex loads the index file
@@ -89,6 +97,26 @@ func (idx Index) Save() error {
 	return enc.Encode(idx)
 }
 
+// Init checks all the current files, to see if they are valid
+func (idx *Index) Init() {
+	if idx.Files == nil {
+		idx.Files = make(map[string]File)
+	}
+
+	// Init and check all files
+	for k, v := range idx.Files {
+		err := v.Init(k)
+		if err != nil {
+			fmt.Printf("Error reading index: %v\n", err)
+		}
+		if !v.Check(idx.TempDirectory) {
+			v.StatusOriginal = v.Status
+			v.Status = "errored"
+		}
+		idx.Files[k] = v
+	}
+}
+
 // Refresh reads the current folder and updates all the files/folders in it
 func (idx *Index) Refresh() {
 	// Create a temp directory if it doesn't exist
@@ -106,76 +134,74 @@ func (idx *Index) Refresh() {
 		os.Exit(1)
 	}
 
-	// Check all indexed files
-	var currIndexed []string
-	for _, v := range idx.Unknown {
-		currIndexed = checkFile(v, currIndexed, idx.TempDirectory)
-	}
-	for _, v := range idx.Ignored {
-		currIndexed = checkFile(v, currIndexed, "")
-	}
-	for _, v := range idx.Safe {
-		currIndexed = checkFile(v, currIndexed, "")
-	}
-	for _, v := range idx.Unsafe {
-		currIndexed = checkFile(v, currIndexed, "")
-	}
-
-	// Remove invalid files
-	removeInvalidFiles(idx.Unknown, currIndexed)
-	removeInvalidFiles(idx.Ignored, currIndexed)
-	removeInvalidFiles(idx.Safe, currIndexed)
-	removeInvalidFiles(idx.Unsafe, currIndexed)
-
 	// Add new files
 	for _, file := range files {
+		absFile, err := filepath.Abs(file.Name())
+		if err != nil {
+			continue
+		}
+
 		isIndexed := false
-		for _, v := range currIndexed {
-			absFile, _ := filepath.Abs(file.Name())
-			absValue, _ := filepath.Abs(v)
-			if absFile == absValue {
+		for _, v := range idx.Files {
+			if absFile == v.currLocation {
 				isIndexed = true
 				break
 			}
 		}
 		if !isIndexed {
-			idx.Unknown = append(idx.Unknown, file.Name())
+			newFile := File{}
+			newFile.Init(file.Name())
+			idx.Files[file.Name()] = newFile
 		}
 	}
 }
 
-func checkFile(file string, list []string, tempDir string) []string {
-	_, err1 := os.Stat(file)
+// Init checks that the file is correct, and stores the file name
+func (file *File) Init(fileName string) error {
+	file.fileName = fileName
+	switch file.Status {
+	case "":
+		file.Status = "unknown"
+	// Valid statuses
+	case "unknown":
+	case "good":
+	case "bad":
+	case "ignored":
+	case "errored":
+	// Not one of the above:
+	default:
+		return errors.New("invalid file status for " + fileName)
+	}
+	return nil
+}
+
+// Check checks that the file exists and is valid
+func (file *File) Check(tempDir string) bool {
+	_, err1 := os.Stat(file.fileName)
 	if err1 != nil {
-		if len(tempDir) > 0 {
-			_, err2 := os.Stat(filepath.Join(tempDir, file))
+		if len(tempDir) > 0 && (file.Status == "" || file.Status == "unknown" || file.Status == "bad") {
+			_, err2 := os.Stat(filepath.Join(tempDir, file.fileName))
 			if err2 != nil {
 				fmt.Printf("Error reading file: %v\n", err1)
-				return list
+				return false
 			}
+			currLoc, err := filepath.Abs(filepath.Join(tempDir, file.fileName))
+			if err != nil {
+				fmt.Printf("Error reading file: %v\n", err)
+				return false
+			}
+			file.currLocation = currLoc
 		} else {
 			fmt.Printf("Error reading file: %v\n", err1)
-			return list
+			return false
 		}
-	}
-	for _, v := range list {
-		if v == file {
-			fmt.Printf("Error: file %s is duplicated\n", v)
-			return list
+	} else {
+		currLoc, err := filepath.Abs(file.fileName)
+		if err != nil {
+			fmt.Printf("Error reading file: %v\n", err)
+			return false
 		}
+		file.currLocation = currLoc
 	}
-	return append(list, file)
-}
-
-func removeInvalidFiles(list []string, fullList []string) []string {
-	newList := list[:0]
-	for _, file := range list {
-		for _, v := range fullList {
-			if file == v {
-				newList = append(newList, v)
-				break
-			}
-		}
-	}
-	return newList
+	return true
 }
