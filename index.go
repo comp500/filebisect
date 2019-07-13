@@ -162,9 +162,6 @@ func (idx *Index) moveFiles() {
 		return
 	}
 	sortByGoodness(unknownFiles)
-	for _, v := range unknownFiles {
-		fmt.Println(*v)
-	}
 
 	// Move half of the files to the temp folder
 	var testHalf []*File
