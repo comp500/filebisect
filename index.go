@@ -81,7 +81,12 @@ func (idx *Index) Refresh() {
 
 	// Add new files
 	for _, file := range files {
+		// Ignore file-bisect-index.toml
 		if strings.Contains(file.Name(), indexName) {
+			continue
+		}
+		// Ignore folders, they break all the assumptions of this code
+		if file.IsDir() {
 			continue
 		}
 		absFile, err := filepath.Abs(file.Name())
@@ -202,4 +207,15 @@ func sortByGoodness(files []*File) {
 	sort.SliceStable(files, func(i, j int) bool {
 		return files[i].BadCount < files[j].BadCount
 	})
+}
+
+// Ignore ignores a file, it's that simple!
+func (idx *Index) Ignore(file string) {
+	fileStr, ok := idx.Files[file]
+	if !ok {
+		fmt.Println("Couldn't find that file!")
+		return
+	}
+	fileStr.Status = "ignored"
+	idx.Files[file] = fileStr
 }
