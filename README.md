@@ -13,8 +13,9 @@ Find the conflicting file (e.g. mod) in a folder. Doesn't work with nested folde
 5. Now test the system (e.g. modpack) again. If there is a conflict, run `filebisect bad`. If not, run `filebisect good`.
 6. When the bisection is done, FileBisect will say "Done!". The results are in `file-bisect-index.toml`, just Ctrl+F for `bad`.
 
-Note: If some of the files need to be there at the same time (e.g. dependencies), just copy them from the temporary directory after running `filebisect bad` or `filebisect good`. FileBisect will automatically recognise where the files are each time you run it.
+Note: If some of the files need to be there at the same time (e.g. dependencies), just move them from the temporary directory after running `filebisect bad` or `filebisect good`. FileBisect will automatically recognise where the files are each time you run it.
 
 ## To Do
 - Dependency checking
 - CurseForge dependency import
+- Recursion support (nested folders)
