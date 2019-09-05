@@ -1,4 +1,4 @@
-package main
+package index
 
 import (
 	"fmt"
@@ -12,11 +12,22 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+const indexName = "file-bisect-index.toml"
+
 // Index is the index of all files to bisect
 type Index struct {
 	TempDirectory string `toml:"temp-directory"`
 
 	Files map[string]File
+}
+
+// LoadOrCreateIndex attempts to load the index file, and returns an empty index if it does not exist
+func LoadOrCreateIndex() (Index, error) {
+	idx, err := LoadIndex()
+	if err != nil && os.IsNotExist(err) {
+		return Index{}, nil
+	}
+	return idx, err
 }
 
 // LoadIndex loads the index file
