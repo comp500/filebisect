@@ -1,4 +1,4 @@
-module github.com/comp500/FileBisect
+module github.com/comp500/filebisect
 
 go 1.12
 
