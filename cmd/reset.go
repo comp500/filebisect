@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/comp500/filebisect/index"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +16,18 @@ var resetCmd = &cobra.Command{
 changing the good/badness of all files to unknown, ignoring ignored files.`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Not Yet Implemented!!!!!")
+		idx, err := index.LoadOrCreateIndex()
+		if err != nil {
+			fmt.Printf("Error loading index file: %v\n", err)
+			os.Exit(1)
+		}
+		idx.Init()
+		idx.Reset() // TODO: warn if no files are reset?
+		err = idx.Save()
+		if err != nil {
+			fmt.Printf("Error saving index file: %v\n", err)
+			os.Exit(1)
+		}
 	},
 }
 

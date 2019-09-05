@@ -230,3 +230,17 @@ func (idx *Index) Ignore(file string) {
 	fileStr.Status = "ignored"
 	idx.Files[file] = fileStr
 }
+
+// Reset changes all good/bad files to unknown
+func (idx *Index) Reset() {
+	for k, v := range idx.Files {
+		if v.Status == "errored" || v.Status == "ignored" {
+			continue
+		}
+		v.BadCount = 0
+		if v.Status == "good" || v.Status == "bad" {
+			v.Status = "unknown"
+		}
+		idx.Files[k] = v
+	}
+}
