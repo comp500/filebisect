@@ -3,7 +3,7 @@ Find the conflicting file (e.g. mod) in a folder. Doesn't work with nested folde
 
 ## How to install it
 1. Install Go
-2. Run `go get github.com/comp500/filebisect`
+2. Run `go get -u github.com/comp500/filebisect`
 
 ## How to use it
 1. Open the command prompt / terminal / whatever in the folder you want to bisect
