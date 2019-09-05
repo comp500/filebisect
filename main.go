@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -25,18 +26,9 @@ func main() {
 		}
 	}
 
-	if len(os.Args) != 2 {
-		if strings.ToLower(os.Args[1]) == "ignore" {
-			if len(os.Args) != 3 {
-				fmt.Println("2 arguments must be specified!")
-				printHelp()
-				os.Exit(1)
-			}
-		} else {
-			fmt.Println("1 argument must be specified!")
-			printHelp()
-			os.Exit(1)
-		}
+	if len(os.Args) < 2 {
+		printHelp()
+		os.Exit(1)
 	}
 
 	switch strings.ToLower(os.Args[1]) {
@@ -49,8 +41,13 @@ func main() {
 			os.Exit(1)
 		}
 	case "ignore":
+		if len(os.Args) != 3 {
+			fmt.Println("The file to ignore must be specified!")
+			printHelp()
+			os.Exit(1)
+		}
 		idx.Init()
-		idx.Ignore(os.Args[2])
+		idx.Ignore(filepath.Clean(os.Args[2]))
 		err := idx.Save()
 		if err != nil {
 			fmt.Printf("Error saving index file: %v\n", err)
@@ -82,5 +79,6 @@ func main() {
 }
 
 func printHelp() {
-	fmt.Println("Available commands: index, ignore, good, bad, reset, help")
+	fmt.Println("Usage: filebisect [command]")
+	fmt.Println("Available commands: index, ignore, good, bad, help")
 }
